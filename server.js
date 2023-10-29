@@ -25,7 +25,7 @@ const questions=[
         type: 'list',
         message: 'Choose what you would like to do:',
         name: 'action',
-        choices:['view all departments', 'view all roles', 'view all employees', 'add a department', 'add a role', 'add an employee','update an employee role']
+        choices:['view all departments', 'view all roles', 'view all employees', 'add a department', 'add a role', 'add an employee','update an employee role','exit']
     },
     {
         type: 'input',
@@ -44,9 +44,10 @@ const questions=[
             name: 'newRoleSalary'
         },
         {
-            type: 'input',
+            type: 'list',
             message: 'Enter the department',
-            name: 'newRoleDepartment'
+            name: 'newRoleDepartment',
+            choices:[]
         },
     ],
     [
@@ -61,14 +62,16 @@ const questions=[
             name: 'newEmpLast'
         },
         {
-            type: 'input',
+            type: 'list',
             message: 'Enter the role',
-            name: 'newEmpRole'
+            name: 'newEmpRole',
+            choices: []
         },
         {
-            type: 'input',
+            type: 'list',
             message: 'Enter the manager',
-            name: 'newEmpManager'
+            name: 'newEmpManager',
+            choices:[]
         },
     ],
     [
@@ -84,6 +87,8 @@ const questions=[
         },
     ]
 ]
+
+// console.log(questions[2][1]);
 
 function init(){
     initPromptUser();
@@ -115,10 +120,11 @@ function addDepPromptUser(){
 
 async function addRolePromptUser() {
     try {
+      questions[2][2].choices = await getDeps();
       const response = await inquirer.prompt(questions[2]);
       console.log(response);
 
-      const departmentId = await getDep(response.newRoleDepartment);
+      const departmentId = await getDepMatch(response.newRoleDepartment);
   
       db.query(
         `INSERT INTO roles SET ?`,
@@ -141,21 +147,23 @@ async function addRolePromptUser() {
 async function addEmpPromptUser(){
     
     try {
+
+        questions[3][2].choices= await getRoles();
+
+        questions[3][3].choices= await getMans();
+
         const response = await inquirer.prompt(questions[3])
 
-        const roleId =await getRole(response.newEmpRole);
+        const roleId =await getRoleMatch(response.newEmpRole);
 
-        const managerId =await getMan(response.newEmpMan);
+        const managerId =await getManMatch(response.newEmpManager);
     
         db.query(`INSERT INTO employees SET ?`,
         {
             first_name: response.newEmpFirst,
             last_name: response.newEmpLast,
             role_id: roleId,
-
-            
-        
-        
+            manager_id: managerId,
         },
         (err, res) => {
           if (err) throw err;
@@ -248,7 +256,25 @@ function updateRole(){
     // initPromptUser();
 }
 
-function getDep(dep) {
+function getDeps() {
+  return new Promise((resolve, reject) => {
+    db.query(`SELECT department_name FROM departments`, (err, results) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      const deps=[]
+      results.forEach((element) => {
+        deps.push(element.department_name)
+      });
+      console.log(deps);
+      resolve(deps);
+
+    });
+  });
+}
+
+function getDepMatch(dep) {
   return new Promise((resolve, reject) => {
     db.query(`SELECT * FROM departments`, (err, results) => {
       if (err) {
@@ -275,8 +301,27 @@ function getDep(dep) {
   });
 }
 
+function getRoles() {
+  return new Promise((resolve, reject) => {
+    db.query(`SELECT role_title FROM roles`, (err, results) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      // console.log(results);
+      const roles=[]
+      results.forEach((element) => {
+        roles.push(element.role_title)
+      });
+      // console.log(roles);
+      resolve(roles);
 
-function getRole(role){
+    });
+  });
+}
+
+
+function getRoleMatch(role){
     return new Promise((resolve, reject) => {
         db.query(`SELECT * FROM roles`, (err, results) => {
           if (err) {
@@ -305,8 +350,26 @@ function getRole(role){
       });
 }
 
+function getMans() {
+  return new Promise((resolve, reject) => {
+    db.query(`SELECT first_name, last_name FROM employees`, (err, results) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      // console.log(results);
+      const mans=['None'];
+      results.forEach((element) => {
+        mans.push(`${element.first_name} ${element.last_name}`);
+      });
+      // console.log(mans);
+      resolve(mans);
 
-function getMan(manager){
+    });
+  });
+}
+
+function getManMatch(manager){
     return new Promise((resolve, reject) => {
         db.query(`SELECT * FROM employees`, (err, results) => {
           if (err) {
@@ -315,15 +378,18 @@ function getMan(manager){
           }
     
           let id;
-        //   console.log(results);
+          console.log("managers")
+          console.log(results);
+          console.log("specific")
+          console.log(manager)
           results.forEach((element) => {
             // console.log(element)
-            if (element.id === manager) {
+            if (`${element.first_name} ${element.last_name}` === manager) {
               id = element.id;
             //   console.log(id);
             }
           });
-        //   console.log(id);
+          console.log(id);
           resolve(id);
         });
       });
