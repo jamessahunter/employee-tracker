@@ -1,19 +1,22 @@
 //imports constructors
-const inquirer = require('inquirer');
-const express = require('express');
-// Import and require mysql2
 const mysql = require('mysql2');
-
-const PORT = process.env.PORT || 3001;
-const app = express();
-
-// Express middleware
-app.use(express.urlencoded({ extended: false }));
-app.use(express.json());
+const inquirer = require('inquirer');
+// Import and require mysql2
 
 
-
-
+// Connect to database
+const db = mysql.createConnection(
+    {
+      host: 'localhost',
+      port:3306,
+      // MySQL username,
+      user: 'root',
+      // MySQL password
+      password: 'password',
+      database: 'company_db'
+    },
+    console.log(`Connected to the company_db database.`)
+  );
   
 
 
@@ -43,7 +46,7 @@ const questions=[
         {
             type: 'input',
             message: 'Enter the department',
-            name: 'newRoleDeprtment'
+            name: 'newRoleDepartment'
         },
     ],
     [
@@ -84,6 +87,7 @@ const questions=[
 
 function init(){
     initPromptUser();
+
 }
 
 function initPromptUser(){
@@ -100,23 +104,68 @@ function addDepPromptUser(){
     .prompt(questions[1])
     .then((response)=>{
         console.log(response);
-    })
+        db.query(`INSERT INTO departments SET ?`,{department_name:`${response.newDepartment}`},
+        (err, res) => {
+          if (err) throw err;
+          console.log(`${res.affectedRows} depertment inserted!\n`);
+        }
+    )
+})
 }
 
-function addRolePromptUser(){
-    inquirer
-    .prompt(questions[2])
-    .then((response)=>{
-        console.log(response);
-    })
-}
+async function addRolePromptUser() {
+    try {
+      const response = await inquirer.prompt(questions[2]);
+      console.log(response);
+  
+      const departmentId = await getDep(response.newRoleDepartment);
+  
+      db.query(
+        `INSERT INTO roles SET ?`,
+        {
+          role_title: response.newRoleName,
+          salary: response.newRoleSalary,
+          department_id: departmentId,
+        },
+        (err, res) => {
+          if (err) throw err;
+          console.log(`${res.affectedRows} role inserted!\n`);
+        }
+      );
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+// async function addRolePromptUser(){
+//     inquirer
+//     .prompt(questions[2])
+//     .then((response)=>{
+//         console.log(response);
+//         db.query(`INSERT INTO roles SET ?`,
+//         {role_title:`${response.newRoleName}`,
+//         salary:`${response.newRoleSalary}`,
+//         department_id: getDep(response.newRoleDepartment)},
+//         (err, res) => {
+//           if (err) throw err;
+//           console.log(`${res.affectedRows} role inserted!\n`);
+//         }
+//     )
+//     })
+// }
 
 function addEmpPromptUser(){
     inquirer
     .prompt(questions[3])
     .then((response)=>{
         console.log(response);
-        })
+        db.query(`INSERT INTO employees SET ?`,{department_name:`${response.newDepartment}`},
+        (err, res) => {
+          if (err) throw err;
+          console.log(`${res.affectedRows} product inserted!\n`);
+        }
+    )
+    })
 }
 
 function updateEmpPromptUser(){
@@ -151,22 +200,37 @@ function cases(response){
         case 'update an employee role':
             updateRole();
             break;
+        default:
+            break;
     }
 }
 
 
 function viewDeps(){
     console.log("view deps");
+    db.query(`SELECT * FROM departments`,(err,results)=>{
+        console.log(results);
+    });
+    // initPromptUser();
 }
 function viewRoles(){
     console.log("view roles");
+    db.query(`SELECT * FROM roles`,(err,results)=>{
+        console.log(results);
+    });
+    // initPromptUser();
 }
 function viewEmps(){
     console.log('view employees');
+    db.query(`SELECT * FROM employees`,(err,results)=>{
+        console.log(results);
+    });
+    // initPromptUser();
 }
 function addDep(){
     console.log('add dep');
     addDepPromptUser();
+    // initPromptUser();
 }
 function addRole(){
     console.log('add role');
@@ -175,31 +239,42 @@ function addRole(){
 function addEmp(){
     console.log('add employee');
     addEmpPromptUser();
+    // initPromptUser();
 }
 function updateRole(){
     console.log('update role');
     updateEmpPromptUser();
+    // initPromptUser();
 }
 
+function getDep(dep) {
+  return new Promise((resolve, reject) => {
+    db.query(`SELECT * FROM departments`, (err, results) => {
+      if (err) {
+        reject(err);
+        return;
+      }
 
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+      let id;
+      results.forEach((element) => {
+        if (element.department_name === dep) {
+          id = element.id;
+        //   console.log(id);
+        }
+        
+
+      });
+
+    //   console.log(id);
+    if(id){
+      resolve(id);
+    }
+    else{
+        console.log('department not found');
+        initPromptUser();
+    }
+    });
   });
-  
+}
 
-  init();
-
-
-
-  // Connect to database
-const db = mysql.createConnection(
-    {
-      host: 'localhost',
-      // MySQL username,
-      user: 'root',
-      // MySQL password
-      password: 'password',
-      database: 'company_db'
-    },
-    console.log(`Connected to the company_db database.`)
-  );
+init();
