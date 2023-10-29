@@ -45,7 +45,7 @@ const questions=[
         },
         {
             type: 'list',
-            message: 'Enter the department',
+            message: 'Select the department',
             name: 'newRoleDepartment',
             choices:[]
         },
@@ -63,27 +63,29 @@ const questions=[
         },
         {
             type: 'list',
-            message: 'Enter the role',
+            message: 'Select the role',
             name: 'newEmpRole',
             choices: []
         },
         {
             type: 'list',
-            message: 'Enter the manager',
+            message: 'Select a manager',
             name: 'newEmpManager',
             choices:[]
         },
     ],
     [
         {
-            type: 'input',
-            message: 'Enter the name of the employee',
-            name: 'updateEmp'
+            type: 'list',
+            message: 'Select the employee',
+            name: 'updateEmp',
+            choices:[]
         },
         {
-            type: 'input',
-            message: 'Enter theire role',
-            name: 'updateRole'
+            type: 'list',
+            message: 'Select the new role',
+            name: 'updateRole',
+            choices:[]
         },
     ]
 ]
@@ -113,9 +115,8 @@ function addDepPromptUser(){
         (err, res) => {
           if (err) throw err;
           console.log(`${res.affectedRows} depertment inserted!\n`);
-        }
-    )
-})
+          })
+    })
 }
 
 async function addRolePromptUser() {
@@ -123,7 +124,6 @@ async function addRolePromptUser() {
       questions[2][2].choices = await getDeps();
       const response = await inquirer.prompt(questions[2]);
       console.log(response);
-
       const departmentId = await getDepMatch(response.newRoleDepartment);
   
       db.query(
@@ -149,15 +149,10 @@ async function addEmpPromptUser(){
     try {
 
         questions[3][2].choices= await getRoles();
-
         questions[3][3].choices= await getMans();
-
         const response = await inquirer.prompt(questions[3])
-
         const roleId =await getRoleMatch(response.newEmpRole);
-
         const managerId =await getManMatch(response.newEmpManager);
-    
         db.query(`INSERT INTO employees SET ?`,
         {
             first_name: response.newEmpFirst,
@@ -177,15 +172,39 @@ async function addEmpPromptUser(){
     
 }
 
-function updateEmpPromptUser(){
-    inquirer
-    .prompt(questions[4])
-    .then((response)=>{
-        console.log(response);
-        })
+async function updateEmpPromptUser(){
+  try {
+
+    questions[4][0].choices= await getMans();
+    questions[4][1].choices= await getRoles();
+    const response = await inquirer.prompt(questions[4])
+    const roleId =await getRoleMatch(response.updateRole);
+    const empId= await getManMatch(response.updateEmp);
+    // empName=response.updateEmp.split(" ");
+    console.log(response);
+    db.query(`UPDATE employees SET ? WHERE ?`,
+    [
+      {
+        role_id: roleId,
+        // manager_id: managerId,
+      },
+      {
+        id: empId,
+      },
+    ],
+    (err, res) => {
+      if (err) throw err;
+      console.log(`${res.affectedRows} product inserted!\n`);
+    }
+);
+
+} catch (err){
+    console.error(err);
 }
 
-function cases(response){
+}
+
+async function cases(response){
     // console.log('works');
     switch(response){
         case 'view all departments':
@@ -343,7 +362,7 @@ function getRoleMatch(role){
           resolve(id);
         }
         else{
-            console.log('department not found');
+            console.log('role not found');
             addEmpPromptUser();
         }
         });
@@ -376,12 +395,7 @@ function getManMatch(manager){
             reject(err);
             return;
           }
-    
           let id;
-          console.log("managers")
-          console.log(results);
-          console.log("specific")
-          console.log(manager)
           results.forEach((element) => {
             // console.log(element)
             if (`${element.first_name} ${element.last_name}` === manager) {
@@ -394,5 +408,6 @@ function getManMatch(manager){
         });
       });
 }
+
 
 init();
