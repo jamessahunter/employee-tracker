@@ -117,7 +117,7 @@ async function addRolePromptUser() {
     try {
       const response = await inquirer.prompt(questions[2]);
       console.log(response);
-  
+
       const departmentId = await getDep(response.newRoleDepartment);
   
       db.query(
@@ -137,35 +137,36 @@ async function addRolePromptUser() {
     }
   }
 
-// async function addRolePromptUser(){
-//     inquirer
-//     .prompt(questions[2])
-//     .then((response)=>{
-//         console.log(response);
-//         db.query(`INSERT INTO roles SET ?`,
-//         {role_title:`${response.newRoleName}`,
-//         salary:`${response.newRoleSalary}`,
-//         department_id: getDep(response.newRoleDepartment)},
-//         (err, res) => {
-//           if (err) throw err;
-//           console.log(`${res.affectedRows} role inserted!\n`);
-//         }
-//     )
-//     })
-// }
 
-function addEmpPromptUser(){
-    inquirer
-    .prompt(questions[3])
-    .then((response)=>{
-        console.log(response);
-        db.query(`INSERT INTO employees SET ?`,{department_name:`${response.newDepartment}`},
+async function addEmpPromptUser(){
+    
+    try {
+        const response = await inquirer.prompt(questions[3])
+
+        const roleId =await getRole(response.newEmpRole);
+
+        const managerId =await getMan(response.newEmpMan);
+    
+        db.query(`INSERT INTO employees SET ?`,
+        {
+            first_name: response.newEmpFirst,
+            last_name: response.newEmpLast,
+            role_id: roleId,
+
+            
+        
+        
+        },
         (err, res) => {
           if (err) throw err;
           console.log(`${res.affectedRows} product inserted!\n`);
         }
-    )
-    })
+    );
+    
+    } catch (err){
+        console.error(err);
+    }
+    
 }
 
 function updateEmpPromptUser(){
@@ -261,20 +262,71 @@ function getDep(dep) {
           id = element.id;
         //   console.log(id);
         }
-        
-
       });
-
     //   console.log(id);
     if(id){
       resolve(id);
     }
     else{
         console.log('department not found');
-        initPromptUser();
+        addRolePromptUser();
     }
     });
   });
+}
+
+
+function getRole(role){
+    return new Promise((resolve, reject) => {
+        db.query(`SELECT * FROM roles`, (err, results) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+    
+          let id;
+        //   console.log(results);
+          results.forEach((element) => {
+            // console.log(element)
+            if (element.role_title === role) {
+              id = element.id;
+            //   console.log(id);
+            }
+          });
+        //   console.log(id);
+        if(id){
+          resolve(id);
+        }
+        else{
+            console.log('department not found');
+            addEmpPromptUser();
+        }
+        });
+      });
+}
+
+
+function getMan(manager){
+    return new Promise((resolve, reject) => {
+        db.query(`SELECT * FROM employees`, (err, results) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+    
+          let id;
+        //   console.log(results);
+          results.forEach((element) => {
+            // console.log(element)
+            if (element.id === manager) {
+              id = element.id;
+            //   console.log(id);
+            }
+          });
+        //   console.log(id);
+          resolve(id);
+        });
+      });
 }
 
 init();
