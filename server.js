@@ -237,22 +237,41 @@ async function cases(response){
 function viewDeps(){
     console.log("view deps");
     db.query(`SELECT * FROM departments`,(err,results)=>{
-        console.log(results);
+        // console.table(results,['id','department_name']);
+        displayTable(results);
     });
     // initPromptUser();
 }
 function viewRoles(){
     console.log("view roles");
     db.query(`SELECT * FROM roles`,(err,results)=>{
-        console.log(results);
+        // console.table(results);
+        displayTable(results)
     });
     // initPromptUser();
 }
 function viewEmps(){
     console.log('view employees');
-    db.query(`SELECT * FROM employees`,(err,results)=>{
-        console.log(results);
+    db.query(`
+      SELECT *
+      FROM employees
+      LEFT JOIN roles ON employees.role_id = roles.id
+      UNION
+      SELECT *
+      FROM employees
+      RIGHT JOIN roles ON employees.role_id = roles.id
+    `, (err, results) => {
+      if (err) {
+        console.error(err);
+      } else {
+        displayTable(results);
+      }
     });
+    // db.query(`SELECT * FROM employees
+    // FULL OUTER JOIN roles
+    // ON employees.role_id = roles.id`,(err,results)=>{
+    //     console.table(results);
+    // });
     // initPromptUser();
 }
 function addDep(){
@@ -274,6 +293,16 @@ function updateRole(){
     updateEmpPromptUser();
     // initPromptUser();
 }
+
+function displayTable(data) {
+  const columns = Object.keys(data[0]);
+  const tableData = data.map(obj => columns.map(col => obj[col]));
+  
+  console.log(columns.join('\t'));
+  tableData.forEach(row => console.log(row.join('\t')));
+}
+
+
 
 function getDeps() {
   return new Promise((resolve, reject) => {
