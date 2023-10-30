@@ -1,6 +1,7 @@
 //imports constructors
 const mysql = require('mysql2');
 const inquirer = require('inquirer');
+var Table = require('cli-table');
 // Import and require mysql2
 
 
@@ -244,7 +245,7 @@ function viewDeps(){
     db.query(`SELECT * FROM departments`,(err,results)=>{
         // console.table(results,['id','department_name']);
         new Promise((resolve) => {
-          displayTable(results);
+          displayTable(['ID','Department Name'],results);
           resolve();
         }).then(() => {
           initPromptUser();
@@ -254,10 +255,13 @@ function viewDeps(){
 }
 function viewRoles(){
     console.log("view roles");
-    db.query(`SELECT * FROM roles`,(err,results)=>{
+    db.query(`SELECT role_title, roles.id, department_name, salary
+              FROM roles
+              JOIN departments ON departments.id=roles.department_id`,
+              (err,results)=>{
         // console.table(results);
         new Promise((resolve) => {
-          displayTable(results);
+          displayTable(['Role Title', 'Role Id', 'Department','Salary'],results);
           resolve();
         }).then(() => {
           initPromptUser();
@@ -318,12 +322,27 @@ function updateRole(){
     });
 }
 
-function displayTable(data) {
-  const columns = Object.keys(data[0]);
-  const tableData = data.map(obj => columns.map(col => obj[col]));
-  
-  console.log(columns.join('\t'));
-  tableData.forEach(row => console.log(row.join('\t')));
+function displayTable(Array,res) {
+  let columnWidths=[];
+  for (let i=0; i<Array.length; i++){
+    columnWidths.push(20);
+  }
+  var table = new Table({
+    //You can name these table heads chicken if you'd like. They are simply the headers for a table we're putting our data in
+    head: Array,
+    //These are just the width of the columns. Only mess with these if you want to change the cosmetics of our response
+    colWidths: columnWidths
+});
+
+for (let i = 0; i < res.length; i++) {
+  const row = [];
+  for (const key in res[i]) {
+    row.push(res[i][key]);
+  }
+  table.push(row);
+}
+
+console.log(table.toString());
 }
 
 function getInfo(table){
