@@ -27,7 +27,7 @@ const questions=[
         message: 'Choose what you would like to do:',
         name: 'action',
         choices:['view all departments', 'view all roles', 'view all employees', 'add a department', 'add a role', 'add an employee','update an employee role',
-        'view employees by manager','view employees by department','exit']
+        'view employees by manager','view employees by department','view budget of department','exit']
     },
     {
         type: 'input',
@@ -99,9 +99,10 @@ const questions=[
     {
       type: 'list',
       message: 'Select the Department',
-      name: 'empByDep',
+      name: 'byDep',
       choices:[]
-    }
+    },
+    
 ]
 
 // console.log(questions[2][1]);
@@ -250,8 +251,11 @@ function cases(response){
         case 'view employees by manager':
             viewEmpsByMan();
             break;
-        case'view employees by department':
+        case 'view employees by department':
             viewEmpsByDep();
+            break;
+        case 'view budget of department':
+            viewBudget();
             break;
         default:
             break;
@@ -341,10 +345,10 @@ async function viewEmpsByMan(){
 
 async function viewEmpsByDep(){
   try {
-  console.log('view employees by manager');
+  console.log('view employees by department');
   questions[6].choices= await getInfo('deps');
   const response = await inquirer.prompt(questions[6])
-  const depId= await getMatch(response.empByDep,'dep');
+  const depId= await getMatch(response.byDep,'dep');
   console.log(depId)
   db.query(`
     SELECT CONCAT(e.first_name, ' ', e.last_name)
@@ -369,6 +373,36 @@ async function viewEmpsByDep(){
   console.error(err);
 }
 }
+
+async function viewBudget(){
+  try {
+    console.log('view budget by department');
+    questions[6].choices= await getInfo('deps');
+    const response = await inquirer.prompt(questions[6])
+    const depId= await getMatch(response.byDep,'dep');
+    console.log(depId)
+    db.query(`
+      SELECT SUM(salary) AS Total_Salary
+      FROM roles
+      WHERE department_id=?`,
+      [depId],
+       (err, results) => {
+      if (err) {
+        console.error(err);
+      } else {
+        new Promise((resolve) => {
+          displayTable(['Total Budget'],results);
+          resolve();
+        }).then(() => {
+          initPromptUser();
+        });
+      }
+    });
+  }catch (err){
+    console.error(err);
+  }
+}
+
 
 function addDep(){
     console.log('add dep');
