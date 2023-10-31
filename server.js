@@ -27,7 +27,7 @@ const questions=[
         message: 'Choose what you would like to do:',
         name: 'action',
         choices:['view all departments', 'view all roles', 'view all employees', 'add a department', 'add a role', 'add an employee','update an employee role',
-        'update a manager', 'view employees by manager','view employees by department','view budget of department','exit']
+        'update a manager', 'view employees by manager','view employees by department','delete a department, role, employee','view budget of department','exit']
     },
     {
         type: 'input',
@@ -114,6 +114,20 @@ const questions=[
         message: 'Select the Manger',
         name: 'Man',
         choices:[]
+      },
+    ],
+    [
+      {
+        type: 'list',
+        message: 'Select from where you wan to delete',
+        name: 'deleteFrom',
+        choices:['departments','roles','employees']
+      },
+      {
+          type: 'list',
+          message: '',
+          name: 'deleteChoice',
+          choices:[]
       },
     ]
     
@@ -303,6 +317,9 @@ function cases(response){
         case 'view employees by department':
             viewEmpsByDep();
             break;
+        case 'delete a department, role, employee':
+            userDelete();
+            break;
         case 'view budget of department':
             viewBudget();
             break;
@@ -423,6 +440,43 @@ async function viewEmpsByDep(){
 }
 }
 
+async function deletePromptUser(){
+  try {
+    let choice='';
+    const response1 = await inquirer.prompt(questions[8][0])
+    if(response1.deleteFrom==='departments'){
+      questions[8][1].choices= await getInfo('deps');
+      questions[8][1].message='Select a department to delete';
+      choice='dep';
+    }else if(response1.deleteFrom==='roles'){
+      questions[8][1].choices= await getInfo('roles');
+      questions[8][1].message='Select a role to delete'
+      choice='role';
+    }else{
+      questions[8][1].choices= await getInfo('emps');
+      questions[8][1].message='Select an employee to delete'
+      choice='emp';
+    }
+    const response2 = await inquirer.prompt(questions[8][1])
+
+    const Id =await getMatch(response2.deleteChoice,choice);
+
+    // console.log(response);
+    db.query(`DELETE FROM ${response1.deleteFrom} WHERE id=?`,
+    [
+      Id
+    ],
+    (err, res) => {
+      if (err) throw err;
+      console.log(`${res.affectedRows} product inserted!\n`);
+    }
+    );
+  } catch (err){
+      console.error(err);
+  }
+
+}
+
 async function viewBudget(){
   try {
     console.log('view budget by department');
@@ -481,6 +535,13 @@ function updateRole(){
 function updateMan(){
   console.log('update manger');
   updateManPromptUser().then(()=>{
+    initPromptUser();
+  })
+}
+
+function userDelete(){
+  console.log('delete');
+  deletePromptUser().then(()=>{
     initPromptUser();
   })
 }
