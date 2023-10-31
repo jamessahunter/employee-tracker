@@ -27,7 +27,7 @@ const questions=[
         message: 'Choose what you would like to do:',
         name: 'action',
         choices:['view all departments', 'view all roles', 'view all employees', 'add a department', 'add a role', 'add an employee','update an employee role',
-        'view employees by manager','view employees by department','view budget of department','exit']
+        'update a manager', 'view employees by manager','view employees by department','view budget of department','exit']
     },
     {
         type: 'input',
@@ -102,6 +102,20 @@ const questions=[
       name: 'byDep',
       choices:[]
     },
+    [
+      {
+        type: 'list',
+        message: 'Select the employee',
+        name: 'Emp',
+        choices:[]
+      },
+      {
+        type: 'list',
+        message: 'Select the Manger',
+        name: 'Man',
+        choices:[]
+      },
+    ]
     
 ]
 
@@ -164,7 +178,7 @@ async function addEmpPromptUser(){
     try {
 
         questions[3][2].choices= await getInfo('roles');
-        questions[3][3].choices= await getInfo('emps');
+        questions[3][3].choices= await getInfo('man');
         const response = await inquirer.prompt(questions[3])
         const roleId =await getMatch(response.newEmpRole,'role');
         let managerId=null;
@@ -216,12 +230,44 @@ async function updateEmpPromptUser(){
       if (err) throw err;
       console.log(`${res.affectedRows} product inserted!\n`);
     }
-);
-
-} catch (err){
-    console.error(err);
+    );
+  } catch (err){
+      console.error(err);
+  }
 }
 
+async function updateManPromptUser(){
+  try {
+
+    questions[7][0].choices= await getInfo('update');
+    questions[7][1].choices= await getInfo('man');
+    const response = await inquirer.prompt(questions[7])
+    const empId =await getMatch(response.Emp,'emp');
+    // console.log("role works")
+    let managerId=null;
+    if(response.newEmpManager!=='None'){
+      managerId =await getMatch(response.Man,'emp');
+    }
+    // empName=response.updateEmp.split(" ");
+    console.log(response);
+    db.query(`UPDATE employees SET ? WHERE ?`,
+    [
+      {
+        // managerId
+        manager_id: managerId,
+      },
+      {
+        id: empId,
+      },
+    ],
+    (err, res) => {
+      if (err) throw err;
+      console.log(`${res.affectedRows} product inserted!\n`);
+    }
+    );
+  } catch (err){
+      console.error(err);
+  }
 }
 
 function cases(response){
@@ -247,6 +293,9 @@ function cases(response){
             break;
         case 'update an employee role':
             updateRole();
+            break;
+        case 'update a manager':
+            updateMan();
             break;
         case 'view employees by manager':
             viewEmpsByMan();
@@ -429,6 +478,13 @@ function updateRole(){
     });
 }
 
+function updateMan(){
+  console.log('update manger');
+  updateManPromptUser().then(()=>{
+    initPromptUser();
+  })
+}
+
 function displayTable(Array,res) {
   let columnWidths=[];
   for (let i=0; i<Array.length; i++){
@@ -466,11 +522,11 @@ function getInfo(table){
   }else if(table==='roles'){
     table_name='roles';
     column='role_title';
-  }else if(table==='emps'){
+  }else if(table==='emps'||table==='update'){
     table_name='employees';
     column='first_name, last_name';
+  }else if(table==='man'){
     info.push('None');
-  }else if(table==='update'||table==='man'){
     table_name='employees';
     column='first_name, last_name';
   }
