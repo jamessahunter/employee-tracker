@@ -26,7 +26,8 @@ const questions=[
         type: 'list',
         message: 'Choose what you would like to do:',
         name: 'action',
-        choices:['view all departments', 'view all roles', 'view all employees', 'add a department', 'add a role', 'add an employee','update an employee role','exit']
+        choices:['view all departments', 'view all roles', 'view all employees', 'add a department', 'add a role', 'add an employee','update an employee role',
+        'view employees by manager','view employees by department','exit']
     },
     {
         type: 'input',
@@ -88,7 +89,13 @@ const questions=[
             name: 'updateRole',
             choices:[]
         },
-    ]
+    ],
+    {
+      type: 'list',
+      message: 'Select the Manger',
+      name: 'empByMan',
+      choices:[]
+    }
 ]
 
 // console.log(questions[2][1]);
@@ -184,7 +191,7 @@ async function updateEmpPromptUser(){
     questions[4][1].choices= await getInfo('roles');
     const response = await inquirer.prompt(questions[4])
     const roleId =await getMatch(response.updateRole,'role');
-    console.log("role works")
+    // console.log("role works")
     const empId= await getMatch(response.updateEmp,'emp');
     // empName=response.updateEmp.split(" ");
     console.log(response);
@@ -210,7 +217,7 @@ async function updateEmpPromptUser(){
 
 }
 
-async function cases(response){
+function cases(response){
     // console.log('works');
     switch(response){
         case 'view all departments':
@@ -234,6 +241,12 @@ async function cases(response){
         case 'update an employee role':
             updateRole();
             break;
+        case 'view employees by manager':
+            viewEmpsByMan();
+            break;
+        case'view employees by department':
+            viewEmpsByDep();
+            break;
         default:
             break;
     }
@@ -245,7 +258,7 @@ function viewDeps(){
     db.query(`SELECT * FROM departments`,(err,results)=>{
         // console.table(results,['id','department_name']);
         new Promise((resolve) => {
-          displayTable(['ID','Department Name'],results);
+          displayTable(['ID','Department'],results);
           resolve();
         }).then(() => {
           initPromptUser();
@@ -259,44 +272,90 @@ function viewRoles(){
               FROM roles
               JOIN departments ON departments.id=roles.department_id`,
               (err,results)=>{
-        // console.table(results);
         new Promise((resolve) => {
-          displayTable(['Role Title', 'Role Id', 'Department','Salary'],results);
+          displayTable(['Role', 'Role ID', 'Department','Salary'],results);
           resolve();
         }).then(() => {
           initPromptUser();
         });
     });
-    // initPromptUser();
+
 }
 function viewEmps(){
     console.log('view employees');
     db.query(`
-      SELECT *
-      FROM employees`,
-      // LEFT JOIN roles ON employees.role_id = roles.id`,
-      // UNION
-      // SELECT *
-      // FROM employees
-      // RIGHT JOIN roles ON employees.role_id = roles.id`,
+      SELECT e.id, e.first_name, e.last_name, r.role_title, d.department_name, r.salary, CONCAT(m.first_name, ' ', m.last_name) 
+      FROM employees e
+      JOIN roles r ON r.id = e.role_id
+      JOIN departments d ON d.id = r.department_id
+      LEFT JOIN employees m ON m.id = e.manager_id;`,
        (err, results) => {
       if (err) {
         console.error(err);
       } else {
         new Promise((resolve) => {
-          displayTable(results);
+          displayTable(['Employee ID', 'First', 'Last', 'Role' ,'Department', 'Salary', 'Manager'],results);
           resolve();
         }).then(() => {
           initPromptUser();
         });
       }
     });
-    // db.query(`SELECT * FROM employees
-    // FULL OUTER JOIN roles
-    // ON employees.role_id = roles.id`,(err,results)=>{
-    //     console.table(results);
-    // });
 }
+
+async function viewEmpsByMan(){
+  try {
+  console.log('view employees by manager');
+  questions[5].choices= await getInfo('man');
+  const response = await inquirer.prompt(questions[5])
+  console.log(response);
+  const manId= await getMatch(response.empByMan,'emp');
+  console.log(manId);
+  db.query(`
+    SELECT CONCAT(e.first_name, ' ', e.last_name) 
+    FROM employees e
+    JOIN employees m ON m.id = e.manager_id
+    WHERE e.manager_id=?;`,
+    [manId],
+     (err, results) => {
+    if (err) {
+      console.error(err);
+    } else {
+      new Promise((resolve) => {
+        displayTable(['Employee'],results);
+        resolve();
+      }).then(() => {
+        initPromptUser();
+      });
+    }
+  });
+}catch (err){
+  console.error(err);
+}
+
+}
+
+function viewEmpsByDep(){
+  console.log('view employees by manager');
+  db.query(`
+    SELECT CONCAT(e.first_name, ' ', e.last_name) AS emp
+    FROM employees e
+    JOIN roles r ON r.id = e.role_id
+    JOIN departments d ON d.id = r.department_id;`,
+     (err, results) => {
+    if (err) {
+      console.error(err);
+    } else {
+      new Promise((resolve) => {
+        displayTable(['Employee'],results);
+        resolve();
+      }).then(() => {
+        initPromptUser();
+      });
+    }
+  });
+}
+
 function addDep(){
     console.log('add dep');
       addDepPromptUser().then(() => {
@@ -325,7 +384,7 @@ function updateRole(){
 function displayTable(Array,res) {
   let columnWidths=[];
   for (let i=0; i<Array.length; i++){
-    columnWidths.push(20);
+    columnWidths.push(15);
   }
   var table = new Table({
     //You can name these table heads chicken if you'd like. They are simply the headers for a table we're putting our data in
@@ -337,11 +396,15 @@ function displayTable(Array,res) {
 for (let i = 0; i < res.length; i++) {
   const row = [];
   for (const key in res[i]) {
+    if(res[i][key]===null){
+      row.push('');
+    }else{
     row.push(res[i][key]);
+    }
   }
   table.push(row);
 }
-
+// console.log(table);
 console.log(table.toString());
 }
 
@@ -359,7 +422,7 @@ function getInfo(table){
     table_name='employees';
     column='first_name, last_name';
     info.push('None');
-  }else if(table==='update'){
+  }else if(table==='update'||table==='man'){
     table_name='employees';
     column='first_name, last_name';
   }
@@ -370,7 +433,7 @@ function getInfo(table){
         return;
       }
       results.forEach((element) => {
-        if(table==='emps'|| table==='update'){
+        if(table==='emps'|| table==='update' || table==='man'){
           info.push(`${element.first_name} ${element.last_name}`)
         }else{
           info.push(element[column])
@@ -405,7 +468,8 @@ function getMatch(match,data){
           if (`${element.first_name} ${element.last_name}` === match) {
             id = element.id;
           }
-        }else{
+        }
+        else{
           if (element[column] === match) {
             id = element.id;
           }
