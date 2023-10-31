@@ -95,6 +95,12 @@ const questions=[
       message: 'Select the Manger',
       name: 'empByMan',
       choices:[]
+    },
+    {
+      type: 'list',
+      message: 'Select the Department',
+      name: 'empByDep',
+      choices:[]
     }
 ]
 
@@ -308,9 +314,7 @@ async function viewEmpsByMan(){
   console.log('view employees by manager');
   questions[5].choices= await getInfo('man');
   const response = await inquirer.prompt(questions[5])
-  console.log(response);
   const manId= await getMatch(response.empByMan,'emp');
-  console.log(manId);
   db.query(`
     SELECT CONCAT(e.first_name, ' ', e.last_name) 
     FROM employees e
@@ -335,13 +339,20 @@ async function viewEmpsByMan(){
 
 }
 
-function viewEmpsByDep(){
+async function viewEmpsByDep(){
+  try {
   console.log('view employees by manager');
+  questions[6].choices= await getInfo('deps');
+  const response = await inquirer.prompt(questions[6])
+  const depId= await getMatch(response.empByDep,'dep');
+  console.log(depId)
   db.query(`
-    SELECT CONCAT(e.first_name, ' ', e.last_name) AS emp
+    SELECT CONCAT(e.first_name, ' ', e.last_name)
     FROM employees e
     JOIN roles r ON r.id = e.role_id
-    JOIN departments d ON d.id = r.department_id;`,
+    JOIN departments d ON d.id = r.department_id
+    WHERE d.id=?`,
+    [depId],
      (err, results) => {
     if (err) {
       console.error(err);
@@ -354,6 +365,9 @@ function viewEmpsByDep(){
       });
     }
   });
+}catch (err){
+  console.error(err);
+}
 }
 
 function addDep(){
